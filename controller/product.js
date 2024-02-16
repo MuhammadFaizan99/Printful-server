@@ -1,7 +1,4 @@
 const axios = require("axios");
-const { dbConnect } = require("../connection");
-
-const connection = dbConnect();
 
 const createProduct = (req, res) => {
   // Access the user's API key from the req.user object

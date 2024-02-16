@@ -1,7 +1,4 @@
 const axios = require("axios");
-const { dbConnect } = require("../connection");
-
-const connection = dbConnect();
 
 const createOrder = (req, res) => {
   const apiKey = req.user.ApiKey;

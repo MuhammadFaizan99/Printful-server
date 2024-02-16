@@ -1,62 +1,59 @@
-// user.js
-const jwt = require("jsonwebtoken");
+// userController.js
 const bcrypt = require("bcrypt");
-const { dbConnect } = require("../connection");
+const jwt = require("jsonwebtoken");
+const {userModel} = require("../model/userSchema");
 
-const connection = dbConnect();
+const signUp = async (req, res) => {
+  const { UserName, Email, Password, ConfirmPassword, ApiKey } = req.body;
 
-// user.js
-const signUp = (req, res) => {
-    const { UserName, Email, Password, ConfirmPassword, ApiKey } = req.body;
-  
-    // Check if the password and confirm password match
-    if (Password !== ConfirmPassword) {
-      return res.status(400).json({ message: "Passwords do not match" });
-    }
-  
+  // Check if the password and confirm password match
+  if (Password !== ConfirmPassword) {
+    return res.status(400).json({ message: "Passwords do not match" });
+  }
+
+  try {
     // Hash the password before storing it
-    bcrypt.hash(Password, 10, (err, hashedPassword) => {
-      if (err) {
-        return res.status(500).json({ message: "Internal server error" });
-      }
-  
-      const addUserQuery = "INSERT INTO users (UserName, Email, Password, ConfirmPassword, ApiKey) VALUES (?, ?, ?, ?, ?)";
-      connection.query(addUserQuery, [UserName, Email, hashedPassword, ConfirmPassword, ApiKey], (error, result) => {
-        if (error) {
-          return res.status(400).json({ message: "User registration failed" });
-        }
-  
-        res.status(201).json({ message: "User registered successfully" });
-      });
-    });
-  };  
+    const hashedPassword = await bcrypt.hash(Password, 10);
 
-const signIn = (req, res) => {
+    const newUser = new userModel({
+      UserName,
+      Email,
+      Password: hashedPassword,
+      ConfirmPassword,
+      ApiKey
+    });
+
+    await newUser.save();
+
+    res.status(201).json({ message: "User registered successfully" });
+  } catch (error) {
+    res.status(400).json({ message: "User registration failed" });
+  }
+};
+
+const signIn = async (req, res) => {
   const { Email, Password } = req.body;
 
-  const findUserQuery = "SELECT * FROM users WHERE Email = ?";
-  connection.query(findUserQuery, [Email], (error, results) => {
-    if (error) {
-      return res.status(500).json({ message: "Internal server error" });
-    }
+  try {
+    const user = await userModel.findOne({ Email });
 
-    if (results.length === 0) {
+    if (!user) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    const user = results[0];
-
     // Compare the provided password with the hashed password
-    bcrypt.compare(Password, user.Password, (err, passwordMatch) => {
-      if (!passwordMatch) {
-        return res.status(401).json({ message: "Invalid credentials" });
-      }
+    const passwordMatch = await bcrypt.compare(Password, user.Password);
 
-      // Create and return a JWT token
-      const token = jwt.sign({ userId: user.id, ApiKey: user.ApiKey }, process.env.JWT_SECRET, { expiresIn: "1h" });
-      res.status(200).json({ token,user });
-    });
-  });
+    if (!passwordMatch) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    // Create and return a JWT token
+    const token = jwt.sign({ userId: user._id, ApiKey: user.ApiKey }, process.env.JWT_SECRET, { expiresIn: "1h" });
+    res.status(200).json({ token, user });
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error" });
+  }
 };
 
 module.exports = { signUp, signIn };

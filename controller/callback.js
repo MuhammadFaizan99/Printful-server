@@ -1,15 +1,10 @@
 // callback.js
-
 const axios = require('axios');
 const qs = require('qs');
-const { dbConnect } = require('../connection'); // Adjust the path as needed
+const {GhlToken} = require('../model/ghlSchema'); 
 
 async function callback(req, res) {
   try {
-    
-
-    const connection = dbConnect(); // Create a MySQL connection
-
     const data = qs.stringify({
       'client_id': process.env.CLIENT_ID,
       'client_secret': process.env.CLIENT_SECRET,
@@ -32,30 +27,20 @@ async function callback(req, res) {
 
     const response = await axios.request(config).catch(err => {});
 
-    // Save the tokens and other information to the MySQL database
+    // Save the tokens and other information to the MongoDB database
     const { access_token, refresh_token, companyId, locationId, userId } = response.data;
 
-    const insertQuery = `
-      INSERT INTO tokens (access_token, refresh_token, companyId, locationId, userId)
-      VALUES (?, ?, ?, ?, ?)
-    `;
-
-    connection.query(insertQuery, [
+    const ghlToken = new GhlToken({
       access_token,
       refresh_token,
       companyId,
       locationId,
-      userId,
-    ], function (error, results, fields) {
-      if (error) {
-        console.error('Error inserting data into the database:', error);
-        return res.status(500).json({ error: 'Internal Server Error' });
-      }
-
-      connection.end(); // Close the connection
-
-      return res.json({ data: response?.data });
+      userId
     });
+
+    await ghlToken.save();
+
+    return res.json({ data: response?.data });
   } catch (error) {
     console.error('Error handling GHL callback:', error);
     return res.status(500).json({ error: 'Internal Server Error' });

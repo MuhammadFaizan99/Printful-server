@@ -1,30 +1,29 @@
-// userSchema.js
-const mysql = require("mysql");
-const {dbConnect} = require("../connection");
+// userModel.js
+const mongoose = require("mongoose");
 
-// Create a MySQL connection
-const connection = dbConnect();
+const userSchema = new mongoose.Schema({
+  UserName: {
+    type: String,
+    required: true
+  },
+  Email: {
+    type: String,
+    required: true,
+    unique: true
+  },
+  Password: {
+    type: String,
+    required: true
+  },
+  ConfirmPassword: {
+    type: String,
+    required: true
+  },
+  ApiKey: {
+    type: String
+  }
+});
 
-// Create the User table schema
-const createUserTable = () => {
-    const createUserTableQuery = `
-    CREATE TABLE IF NOT EXISTS users (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      UserName VARCHAR(255) NOT NULL,
-      Email VARCHAR(255) NOT NULL,
-      Password VARCHAR(255) NOT NULL,
-      ConfirmPassword VARCHAR(255) NOT NULL,  -- Include ConfirmPassword in the schema
-      ApiKey VARCHAR(255)
-    )
-  `;
-  
-  connection.query(createUserTableQuery, (err, result) => {
-    if (err) {
-      console.error("Error creating user table:", err);
-    } else {
-      console.log("User table created successfully");
-    }
-  });
-};
+const userModel = mongoose.model("User", userSchema);
 
-module.exports = { createUserTable };
+module.exports = {userModel};
